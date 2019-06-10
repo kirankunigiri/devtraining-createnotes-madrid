@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[function() {
+
+	/* widget controller */
+	var c = this;
+
+
+	// -----------------------------------------------------------------------------
+	// GATHER HTML
+
+	// Get each page
+	var feedbackWidget = document.getElementById("feedback-widget");
+	var homePage = document.getElementById("page-home");
+	var messagePage = document.getElementById("page-message");
+	var finishedPage = document.getElementById("page-finished");
+	var widgetContainer = document.getElementById("position-container");
+	// Other elements
+	var heading = document.getElementById("heading");
+	var divider = document.getElementById("divider");
+	var widgetBtn = document.getElementById("feedback-widget-btn");
+	var closeBtn = document.getElementById("close-btn");
+	// Get feedback buttons
+	var allButtons = document.querySelectorAll('button[class^=feedback-btn]');
+
+	// Close the widget
+	c.closeWidgetThing = function() {
+		console.log("closing widget");
+		closeWidget(feedbackWidget);
+	}
+
+	// Open the widget
+	c.openWidget = function() {
+
+		console.log("Button is being clicked");
+
+		// Perform no action if feedback widget is already present
+		if (feedbackWidget.parentNode) {
+			console.log("Button is being IGNORED");
+			return;
+		}
+
+		// removeElement(widgetBtn);
+		widgetContainer.appendChild(feedbackWidget);
+
+		// Animate widget in
+		window.setTimeout( function() {
+			feedbackWidget.style.transform = "translateY(0)"
+			feedbackWidget.style.opacity = 1;
+		}, 4);
+	}
+
+
+	// -----------------------------------------------------------------------------
+	// HOME PAGE SETUP
+
+	// A category was selected
+	c.categorySelected = function (e) {
+		console.log("You clicked:", e.target.name);
+		removeElement(homePage);
+		feedbackWidget.appendChild(messagePage);
+	}
+	
+	// Next button on message page
+	c.messageFinished = function () {
+		removeElements([messagePage, heading, divider]);
+		feedbackWidget.appendChild(finishedPage);
+	};
+
+	// Go back to home page
+	c.formCancelled = function () {
+		removeElement(messagePage);
+		feedbackWidget.appendChild(homePage);
+	};
+	
+	// Add click action for finished button
+	c.submitForm = function () {
+		
+		// Bring back pages temporarily to reset all forms
+		feedbackWidget.appendChild(homePage);
+		feedbackWidget.appendChild(messagePage);
+		document.getElementById("ratingForm").reset();
+		document.getElementById("messageForm").reset();
+		removeElements([homePage, messagePage]);
+		
+		// Close the widget
+		closeWidget(feedbackWidget);
+
+		// Reset Widget
+		window.setTimeout(function () {
+			removeElement(finishedPage);
+			feedbackWidget.appendChild(heading);
+			feedbackWidget.appendChild(divider);
+			feedbackWidget.appendChild(homePage);
+		}, 400);
+
+	};
+
+
+	// -----------------------------------------------------------------------------
+	// OTHER STEPS
+
+	// Remove all other pages, but make them visible
+	// We do this at the end to prevent them appearing briefly at the start
+	angular.element(document).ready(function () {
+
+		// Wrap DOM removal in a timeout to prevent errors
+		setTimeout(function(){
+			removeElements([feedbackWidget, messagePage, finishedPage]);
+		}, 0);
+		
+		// Make all pages that were hidden visible again
+		feedbackWidget.style.display = "block";
+		messagePage.style.display = "block";
+		finishedPage.style.display = "block";
+	});
+
+}
+
+
+
+// -----------------------------------------------------------------------------
+// HELPER METHODS
+
+// Removes an element from the DOM
+function removeElement(el) {
+	el.parentNode.removeChild(el);
+}
+
+// Close the widget
+function closeWidget(feedbackWidget) {
+	var height = feedbackWidget.clientHeight;
+
+	// Animate widget out
+	window.setTimeout(function () {
+		feedbackWidget.style.transform = "translateY(" + (feedbackWidget.clientHeight+80) + "px)";
+		feedbackWidget.style.opacity = 0;
+	}, 4);
+
+	window.setTimeout(function () {
+		removeElement(feedbackWidget);
+	}, 400);
+
+}
+
+// Removes all given elements from the DOM
+function removeElements(els) {
+	els.forEach(function (el) {
+		console.log(el.parentNode.childNodes);
+		el.parentNode.removeChild(el);
+	});
+}]]></client_script>
+        <controller_as>c</controller_as>
+        <css>
+.center {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+}
+
+#feedback-widget-btn {
+    border: 0;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    position: absolute;
+    bottom: -12px;
+    right: -12px;
+}
+#feedback-widget-btn img {
+    height: 80px;
+}
+
+/* Feedback Widget */
+#feedback-widget {
+    background: #FAFCFE;
+    border: 3px solid #7FB6A1;
+    border-radius: 5px;
+    box-shadow: 0 3px 16px 0 rgba(0,0,0,0.18);
+    display: none;
+
+    transform: translateY(400px);
+    //opacity: 0;
+    transition: all .4s;
+}
+
+/* Heading */
+.heading {
+    padding: 14px 27px;
+    background-color: #D2E9E0;
+    display: flex;
+    /* width: 300px; */
+}
+.heading__title {
+    font-size: 20px;
+}
+.heading__subtitle {
+    font-size: 14px;
+    max-width: 175px;
+    margin-top: 3px;
+  	margin-right: 10px;
+}
+.heading-icon {
+    color: #7FB6A1;
+    font-size: 50px !important;
+}
+#close-btn {
+    border: 0;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    position: absolute;
+    top: -30px;
+    right: -8px;
+    width: 34px;
+}
+#close-btn img {
+    height: 100%;
+    width: 100%;
+}
+
+/* Divider */
+#divider {
+    width: 100%;
+    height: 3px;
+    background-color: #7FB6A1;
+}
+
+/* Hide other pages by default */
+.fw-page {
+    padding: 14px 0;
+  	padding-left: 27px;
+    display: none;
+    width: 240px;
+}
+#page-home {
+    display: block;
+}
+/* #page-message {
+    width: 230px;
+    height: 223px;
+} */
+
+/* Content */
+.content-title {
+    font-size: 18px;
+    /* font-weight: bold; */
+}
+.content-title--message {
+    margin-top: 14px;
+}
+.finished-subtitle {
+    margin-top: 6px;
+}
+
+
+
+/* -------------------------------------------------------------------------------- */
+/* BUTTON STYLES */
+
+/* Button */
+.feedback-btn {
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin-top: 8px;
+    color: #253629;
+    padding: 8px 10px;
+    cursor: hand;
+
+    /* Button Style */
+    background-color: white;
+    border-style: solid;
+    border-width: 1.5px;
+    border-radius: 4px;
+    border-color: #BECAC5;
+
+    transition: all .2s;
+}
+.feedback-btn:hover {
+    background-color: #7FB6A1;
+    color: white;
+    border-color: #7FB6A1;
+    box-shadow: 0 4px 6px 0 rgba(0,0,0,0.2);
+    transform: translateY(-2px) !important;
+}
+
+
+
+/* -------------------------------------------------------------------------------- */
+/* MESSAGE PAGE STYLES */
+#page-message .feedback-btn {
+    pointer-events: none; /* This button is view only */
+    border: none;
+    background-color: transparent;
+    padding: 0;
+    margin-top: 0px !important;
+    cursor: text;
+}
+.messageForm {
+    text-align: right;
+    margin-bottom: 0;
+}
+.form-btns {
+    /* margin-top: 20px; */
+}
+.ui-btn {
+    display: inline-block;
+    text-decoration: none;
+    color: #253629;
+    background-color: #E9EDF1;
+    padding: 6px 16px;
+    border: 2px solid #BECAC5;
+    border-radius: 4px;
+    transition: .2s all;
+    margin-top: 10px;
+}
+.ui-btn:hover {
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+#cancel-btn {
+    text-decoration: none;
+    color: gray;
+    margin-right: 10px;
+}
+
+
+/* -------------------------------------------------------------------------------- */
+/* Message Input (textarea) */
+.textarea-message {
+    margin-top: 8px;
+    border-radius: 4px;
+    border-color: #DFE0E7;
+    border-width: 1.5px;
+    font-size: 14;
+    font-family: inherit;
+    padding: 10px 12px;
+    resize: none;
+    -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
+    -moz-box-sizing: border-box;    /* Firefox, other Gecko */
+    box-sizing: border-box;         /* Opera/IE 8+ */
+    width: 100%;
+    height: 123px;
+    outline: 0;
+    transition: all .2s;
+}
+.textarea-message:focus {
+    border-color: #7FB6A1;
+}
+
+
+
+/* -------------------------------------------------------------------------------- */
+/* Rating widget from https://www.cssscript.com/simple-5-star-rating-system-with-css-and-html-radios/ */
+div.stars {
+    margin-left: -6px;
+    display: inline-block;
+}
+.rating-widget {
+    /* background-color: red; */
+}
+input.star {
+    display: none;
+}
+label.star {
+    float: right;
+    padding: 7px;
+  	padding-bottom: 0;
+    font-size: 26px;
+    color: #444;
+    transition: all .2s;
+}
+input.star:checked~label.star:before {
+    content: '\f005';
+    color: #7AC450;
+    transition: all .25s;
+}
+input.star-5:checked~label.star:before {
+    color: #7FB6A1;
+    /* text-shadow: 0 0 20px #952; */
+}
+input.star-4:checked~label.star:before {
+    color: #7FB6A1;
+}
+input.star-1:checked~label.star:before {
+    color: #F62;
+}
+label.star:hover {
+    transform: rotate(-15deg) scale(1.3);
+}
+label.star:before {
+    content: '\f006';
+    font-family: FontAwesome;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>feedback_widget</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>Feedback Widget</name>
+        <option_schema>[{"hint":"The title text will show at the top of the widget","name":"title","section":"other","default_value":"Leave Feedback","label":"Title","type":"string"},{"hint":"Add a descriptive message below the title","name":"description","section":"other","default_value":"Help us improve this website!","label":"Description","type":"string"}]</option_schema>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {  /* populate the 'data' object */  /* e.g., data.table = $sp.getValue('table'); */})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-06-07 20:53:05</sys_created_on>
+        <sys_id>88f570d7dbb133001db77b386896192c</sys_id>
+        <sys_mod_count>166</sys_mod_count>
+        <sys_name>Feedback Widget</sys_name>
+        <sys_package display_value="CreateNotes" source="x_snc_createnotes">df5fd9a5090232007f44e1046c8ff69f</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CreateNotes">df5fd9a5090232007f44e1046c8ff69f</sys_scope>
+        <sys_update_name>sp_widget_88f570d7dbb133001db77b386896192c</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-06-10 16:26:00</sys_updated_on>
+        <template><![CDATA[<div class="center" id="position-container">
+
+  <button id="feedback-widget-btn" ng-click="c.openWidget()">
+    <img src="feedback-widget-logo.png" alt="open" />
+  </button>
+
+  <div id="feedback-widget" (transitionend)="c.transitionEnded()">
+
+    <!-- Top Heading -->
+    <div class="heading" id="heading">
+      <button id="close-btn" ng-click="c.closeWidgetThing()">
+        <img src="feedback-widget-close.png" alt="close" />
+      </button>
+      <div class="heading-text">
+        <div class="heading__title">{{::c.options.title}}</div>
+        <div class="heading__subtitle">{{::c.options.description}}</div>
+      </div>
+      <i class="fa fa-commenting heading-icon"></i>
+    </div>
+
+    <!-- Divider -->
+    <div id="divider"></div>
+
+    <!------------------------------------------------------------------------------------------------->
+    <!-- PAGE: Home -->
+    <div class="fw-page" id="page-home">
+
+      <!-- Star Rating -->
+      <div class="content-title content-title--rating">Rate your service</div>
+      <div class="stars rating-widget">
+        <form action="" id="ratingForm">
+          <input class="star star-5" id="star-5" value="5" type="radio" name="star" />
+          <label class="star star-5" for="star-5"></label>
+          <input class="star star-4" id="star-4" value="4" type="radio" name="star" />
+          <label class="star star-4" for="star-4"></label>
+          <input class="star star-3" id="star-3" value="3" type="radio" name="star" />
+          <label class="star star-3" for="star-3"></label>
+          <input class="star star-2" id="star-2" value="2" type="radio" name="star" />
+          <label class="star star-2" for="star-2"></label>
+          <input class="star star-1" id="star-1" value="1" type="radio" name="star" />
+          <label class="star star-1" for="star-1"></label>
+        </form>
+      </div>
+
+      <!-- Feedback Category Options -->
+      <div class="content-title content-title--category">Select a category</div>
+      <button class="feedback-btn" ng-click="c.categorySelected($event)" name="bugReport"><i class="fa fa-bug"></i> &nbsp;Report a bug</button> <br>
+      <button class="feedback-btn" ng-click="c.categorySelected($event)" name="featureRequest"><i class="fa fa-lightbulb-o"></i> &nbsp;Feature request</button> <br>
+      <button class="feedback-btn" ng-click="c.categorySelected($event)" name="other"><i class="fa fa-comment"></i> &nbsp;Other</button> <br>
+    </div>
+
+    <!------------------------------------------------------------------------------------------------->
+    <!-- PAGE: Message -->
+    <div class="fw-page" id="page-message">
+      <div class="feedback-btn"><i class="fa fa-bug"></i> &nbsp;Report a bug</div> <br>
+      <div class="content-title content-title--message">Send your message</div>
+      <form action="" class="messageForm" id="messageForm">
+        <textarea class="textarea-message" name="message" rows="10" cols="30"></textarea> <br>
+        <div class="form-btns">
+          <a href="#" id="cancel-btn" ng-click="c.formCancelled()">Cancel</a>
+          <a href="#" id="send-btn" ng-click="c.messageFinished()" class="ui-btn">SEND</a> <br>
+        </div>
+      </form>
+    </div>
+
+    <!------------------------------------------------------------------------------------------------->
+    <!-- PAGE: Finished -->
+    <div class="fw-page" id="page-finished" ng-click="c.submitForm()">
+      <div class="content-title content-title--finished"><b> Thanks! </b></div>
+      <div class="finished-subtitle">Your feedback will be read by the team.</div>
+      <a href="#" id="finished-btn" class="ui-btn">Done</a> <br>
+    </div>
+
+  </div>
+
+
+</div>]]></template>
+    </sp_widget>
+</record_update>
