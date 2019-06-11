@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
     <sp_widget action="INSERT_OR_UPDATE">
         <category>custom</category>
-        <client_script><![CDATA[function() {
+        <client_script><![CDATA[function(spUtil) {
 
 	/* widget controller */
 	var c = this;
+	
+	// Create the array of categories
+	c.data.categories = [];
+	c.options.categories.split(",").forEach(function (category, i) {
+		c.data.categories.push({
+			name: category.trim(),
+			icon: c.options["icon_" + (i+1)]
+		});
+	});
 
 
 	// -----------------------------------------------------------------------------
@@ -26,22 +35,22 @@
 
 	// Close the widget
 	c.closeWidgetThing = function() {
-		console.log("closing widget");
 		closeWidget(feedbackWidget);
 	}
 
 	// Open the widget
 	c.openWidget = function() {
 
-		console.log("Button is being clicked");
-
 		// Perform no action if feedback widget is already present
 		if (feedbackWidget.parentNode) {
-			console.log("Button is being IGNORED");
 			return;
 		}
+		
+		// Make all pages that were hidden visible again
+		feedbackWidget.style.display = "block";
+		messagePage.style.display = "block";
+		finishedPage.style.display = "block";
 
-		// removeElement(widgetBtn);
 		widgetContainer.appendChild(feedbackWidget);
 
 		// Animate widget in
@@ -56,14 +65,38 @@
 	// HOME PAGE SETUP
 
 	// A category was selected
-	c.categorySelected = function (e) {
-		console.log("You clicked:", e.target.name);
+	c.categorySelected = function (event, index) {
+
+
+		if (!document.querySelector('input[name="star"]:checked')) {
+			spUtil.addErrorMessage("Please select a rating first.");
+			return;
+		}
+
+		// DATA: Get rating, category
+		c.data.rating = document.querySelector('input[name="star"]:checked').value;
+		c.data.category = event.target.name;
+		c.data.icon = c.data.categories[index].icon;
+		
 		removeElement(homePage);
 		feedbackWidget.appendChild(messagePage);
 	}
 	
-	// Next button on message page
-	c.messageFinished = function () {
+	// Send button on message page
+	c.submitForm = function () {
+		
+		// Get the feedback text from the widget
+		c.data.feedback = document.getElementById("textarea-message").value;
+		
+		// Send data to server script
+		c.server.get({
+			action: 'postFeedback',
+			rating: c.data.rating,
+			category: c.data.category,
+			feedback: c.data.feedback
+		});
+		
+		// UI elements update
 		removeElements([messagePage, heading, divider]);
 		feedbackWidget.appendChild(finishedPage);
 	};
@@ -75,11 +108,13 @@
 	};
 	
 	// Add click action for finished button
-	c.submitForm = function () {
+	c.endForm = function () {
 		
-		// Bring back pages temporarily to reset all forms
+		// Bring back pages to reset forms
 		feedbackWidget.appendChild(homePage);
 		feedbackWidget.appendChild(messagePage);
+		
+		// Reset forms
 		document.getElementById("ratingForm").reset();
 		document.getElementById("messageForm").reset();
 		removeElements([homePage, messagePage]);
@@ -108,12 +143,8 @@
 		// Wrap DOM removal in a timeout to prevent errors
 		setTimeout(function(){
 			removeElements([feedbackWidget, messagePage, finishedPage]);
-		}, 0);
+		}, 4);
 		
-		// Make all pages that were hidden visible again
-		feedbackWidget.style.display = "block";
-		messagePage.style.display = "block";
-		finishedPage.style.display = "block";
 	});
 
 }
@@ -147,7 +178,6 @@ function closeWidget(feedbackWidget) {
 // Removes all given elements from the DOM
 function removeElements(els) {
 	els.forEach(function (el) {
-		console.log(el.parentNode.childNodes);
 		el.parentNode.removeChild(el);
 	});
 }]]></client_script>
@@ -157,6 +187,12 @@ function removeElements(els) {
     position: fixed;
     bottom: 12px;
     right: 12px;
+  	z-index: 1000;
+}
+
+button:focus {
+  outline:0 !important;
+  background: yellow;
 }
 
 #feedback-widget-btn {
@@ -167,9 +203,22 @@ function removeElements(els) {
     position: absolute;
     bottom: -12px;
     right: -12px;
+  	transition: all .3s;
+}
+@media only screen and (max-width: 720px) {
+		#feedback-widget-btn {
+	      bottom: -18px;
+  			right: -22px;
+		}
 }
 #feedback-widget-btn img {
     height: 80px;
+}
+#feedback-widget-btn:hover {
+  transform: translateY(-4px);
+}
+#feedback-widget-btn:focus {
+  outline: 0;
 }
 
 /* Feedback Widget */
@@ -216,8 +265,8 @@ function removeElements(els) {
     width: 34px;
 }
 #close-btn img {
-    height: 100%;
-    width: 100%;
+    height: 20px;
+    width: 20px;
 }
 
 /* Divider */
@@ -329,7 +378,7 @@ function removeElements(els) {
 
 /* -------------------------------------------------------------------------------- */
 /* Message Input (textarea) */
-.textarea-message {
+#textarea-message {
     margin-top: 8px;
     border-radius: 4px;
     border-color: #DFE0E7;
@@ -346,7 +395,7 @@ function removeElements(els) {
     outline: 0;
     transition: all .2s;
 }
-.textarea-message:focus {
+#textarea-message:focus {
     border-color: #7FB6A1;
 }
 
@@ -404,23 +453,39 @@ label.star:before {
         <internal>false</internal>
         <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
         <name>Feedback Widget</name>
-        <option_schema>[{"hint":"The title text will show at the top of the widget","name":"title","section":"other","default_value":"Leave Feedback","label":"Title","type":"string"},{"hint":"Add a descriptive message below the title","name":"description","section":"other","default_value":"Help us improve this website!","label":"Description","type":"string"}]</option_schema>
+        <option_schema>[{"hint":"The title text will show at the top of the widget","name":"title","section":"Presentation","default_value":"Leave Feedback","label":"Title","type":"string"},{"hint":"Add a descriptive message below the title","name":"description","section":"Presentation","default_value":"Help us improve this website!","label":"Description","type":"string"},{"hint":"The list of categories the user can choose from, separated by a comma. Example: Report a bug, Feature request, Other","name":"categories","section":"Data","default_value":"Report a bug, Feature request, Other","label":"List of Feedback Categories (separated by a comma)","type":"string"},{"hint":"The Icon to display for the 1st category","name":"icon_1","section":"Data","default_value":"bug","label":"Icon for Category 1","type":"glyphicon"},{"hint":"The Icon to display for the 2nd category","name":"icon_2","section":"Data","default_value":"lightbulb-o","label":"Icon for Category 2","type":"glyphicon"},{"hint":"The Icon to display for the 3rd category","name":"icon_3","section":"Data","default_value":"comment-o","label":"Icon for Category 3","type":"glyphicon"},{"hint":"The Icon to display for the 4th category","name":"icon_4","section":"Data","label":"Icon for Category 4","type":"glyphicon"},{"hint":"The Icon to display for the 5th category","name":"icon_5","section":"Data","label":"Icon for Category 5","type":"glyphicon"},{"hint":"The Icon to display for the 6th category","name":"icon_6","section":"Data","label":"Icon for Category 6","type":"glyphicon"}]</option_schema>
         <public>false</public>
         <roles/>
-        <script><![CDATA[(function() {  /* populate the 'data' object */  /* e.g., data.table = $sp.getValue('table'); */})();]]></script>
+        <script><![CDATA[(function() {
+	/* populate the 'data' object */
+	/* e.g., data.table = $sp.getValue('table'); */
+
+	// Create a new record
+	//console.log(gr);
+	
+	if (input && input.action == "postFeedback") {		
+		var gr = new GlideRecord('x_snc_createnotes_feedback');
+		gr.initialize();
+		gr.category = input.category;
+		gr.feedback = input.feedback;
+		gr.u_rating = input.rating;
+		gr.insert();
+	}
+
+})();]]></script>
         <servicenow>false</servicenow>
         <sys_class_name>sp_widget</sys_class_name>
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2019-06-07 20:53:05</sys_created_on>
         <sys_id>88f570d7dbb133001db77b386896192c</sys_id>
-        <sys_mod_count>166</sys_mod_count>
+        <sys_mod_count>306</sys_mod_count>
         <sys_name>Feedback Widget</sys_name>
         <sys_package display_value="CreateNotes" source="x_snc_createnotes">df5fd9a5090232007f44e1046c8ff69f</sys_package>
         <sys_policy/>
         <sys_scope display_value="CreateNotes">df5fd9a5090232007f44e1046c8ff69f</sys_scope>
         <sys_update_name>sp_widget_88f570d7dbb133001db77b386896192c</sys_update_name>
-        <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2019-06-10 16:26:00</sys_updated_on>
+        <sys_updated_by>fred.luddy</sys_updated_by>
+        <sys_updated_on>2019-06-11 17:44:33</sys_updated_on>
         <template><![CDATA[<div class="center" id="position-container">
 
   <button id="feedback-widget-btn" ng-click="c.openWidget()">
@@ -467,28 +532,31 @@ label.star:before {
 
       <!-- Feedback Category Options -->
       <div class="content-title content-title--category">Select a category</div>
-      <button class="feedback-btn" ng-click="c.categorySelected($event)" name="bugReport"><i class="fa fa-bug"></i> &nbsp;Report a bug</button> <br>
-      <button class="feedback-btn" ng-click="c.categorySelected($event)" name="featureRequest"><i class="fa fa-lightbulb-o"></i> &nbsp;Feature request</button> <br>
-      <button class="feedback-btn" ng-click="c.categorySelected($event)" name="other"><i class="fa fa-comment"></i> &nbsp;Other</button> <br>
+      
+      <div ng-repeat="category in data.categories track by $index">
+        <button class="feedback-btn" ng-click="c.categorySelected($event, $index)" name="{{category.name}}">
+          <i class="fa fa-{{category.icon}}">
+          </i> &nbsp;{{category.name}}</button> <br>
+      </div>
     </div>
 
     <!------------------------------------------------------------------------------------------------->
     <!-- PAGE: Message -->
     <div class="fw-page" id="page-message">
-      <div class="feedback-btn"><i class="fa fa-bug"></i> &nbsp;Report a bug</div> <br>
+      <div class="feedback-btn"><i class="fa fa-{{c.data.icon}}"></i> &nbsp;{{c.data.category}}</div> <br>
       <div class="content-title content-title--message">Send your message</div>
       <form action="" class="messageForm" id="messageForm">
-        <textarea class="textarea-message" name="message" rows="10" cols="30"></textarea> <br>
+        <textarea id="textarea-message" name="message" rows="10" cols="30"></textarea> <br>
         <div class="form-btns">
           <a href="#" id="cancel-btn" ng-click="c.formCancelled()">Cancel</a>
-          <a href="#" id="send-btn" ng-click="c.messageFinished()" class="ui-btn">SEND</a> <br>
+          <a href="#" id="send-btn" ng-click="c.submitForm()" class="ui-btn">SEND</a> <br>
         </div>
       </form>
     </div>
 
     <!------------------------------------------------------------------------------------------------->
     <!-- PAGE: Finished -->
-    <div class="fw-page" id="page-finished" ng-click="c.submitForm()">
+    <div class="fw-page" id="page-finished" ng-click="c.endForm()">
       <div class="content-title content-title--finished"><b> Thanks! </b></div>
       <div class="finished-subtitle">Your feedback will be read by the team.</div>
       <a href="#" id="finished-btn" class="ui-btn">Done</a> <br>
